@@ -1,0 +1,97 @@
+import os
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.model_selection import KFold
+from sklearn.model_selection import cross_val_score
+from sklearn.model_selection import train_test_split
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.naive_bayes import GaussianNB
+from sklearn.linear_model import LogisticRegression
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+from sklearn.svm import SVC
+from sklearn.metrics import accuracy_score
+from sklearn.metrics import confusion_matrix
+from sklearn.metrics import classification_report
+from sklearn.model_selection import GridSearchCV
+from sklearn.model_selection import RandomizedSearchCV
+from sklearn.pipeline import Pipeline
+from sklearn.pipeline import FeatureUnion
+from sklearn.decomposition import PCA
+from sklearn.decomposition import FactorAnalysis
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import GradientBoostingClassifier
+from sklearn.ensemble import ExtraTreesClassifier
+from sklearn.ensemble import AdaBoostClassifier
+from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.neural_network import MLPClassifier
+from sklearn.datasets import make_classification
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder
+from imblearn.over_sampling import SMOTE, ADASYN
+from xgboost import XGBClassifier
+from xgboost import plot_importance
+from imblearn.under_sampling import RandomUnderSampler
+from sklearn.metrics import f1_score
+from category_encoders import TargetEncoder
+from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
+
+
+
+os.chdir('/content/drive/MyDrive/Colab Notebooks/Machine Learning/')
+pd.set_option('display.max_columns', None)
+df = pd.read_csv('bank-additional-full.csv', sep=';')
+
+df['y'] = df['y'].map({'no': 0, 'yes': 1})
+df['pdays'] = np.where(df['pdays']!=999, 1, 0)
+X = df.drop(['y', 'duration', 'default'], axis=1)
+Y = df['y']
+
+X_train_0, X_test, Y_train_0, Y_test = train_test_split(X, Y, stratify = Y,test_size = 0.15, random_state= 7)
+X_train, X_val, Y_train, Y_val = train_test_split(X_train_0, Y_train_0, stratify = Y_train_0, test_size = 0.15, random_state= 7)
+print(f'DF{X.shape} = Train {X_train_0.shape} Test {X_test.shape} Train {X_train.shape} Val {X_val.shape}')
+print(f'DF{Y.shape} = Train {Y_train_0.shape} Test {Y_test.shape} Train {Y_train.shape} Val {Y_val.shape}')
+
+encode_model = TargetEncoder().fit(X_train, Y_train)
+X_train = encode_model.transform(X_train)
+X_test = encode_model.transform(X_test)
+X_val = encode_model.transform(X_val)
+
+
+models = []
+models.append( ('LogisticRegression', LogisticRegression(solver='liblinear')) )
+models.append( ('LinearDiscriminantAnalysis', LinearDiscriminantAnalysis()) )
+models.append( ('KNeighborsClassifier', KNeighborsClassifier(n_neighbors=5)) )
+models.append( ('Gaussian Naive Bayes', GaussianNB()) )
+models.append( ('DecisionTreeClassifier', DecisionTreeClassifier()) )
+models.append( ('AdaBoostClassifier', AdaBoostClassifier()) )
+models.append( ('GradientBoostingClassifier', GradientBoostingClassifier()) )
+models.append( ('RandomForestClassifier', RandomForestClassifier()) )
+models.append( ('ExtraTreesClassifier', ExtraTreesClassifier()) )
+models.append( ('XGBClassifier', XGBClassifier()) )
+models.append( ('QuadraticDiscriminantAnalysis', QuadraticDiscriminantAnalysis()) )
+models.append( ('MLPClassifier', MLPClassifier()) )
+results, names = [],[]
+
+scoring = 'f1_macro'
+for name, model in models:
+  kfold = KFold(n_splits=10, random_state=7, shuffle=True)
+  cv_results = cross_val_score(model, X_train, Y_train, cv=kfold, scoring=scoring)
+  results.append(cv_results)
+  names.append(name)
+  print(name, cv_results.mean(), cv_results.std())
+
+score = []
+std = []
+for i in range(len(names)):
+  score.append(np.mean(results[i]))
+  std.append(np.std(results[i]))
+
+date = pd.DataFrame([score, std], columns = names, index= ['f1_macro', 'std'])
+date = date.T
+Target_Encoder_tab = date.sort_values(by='f1_macro', ascending=False)
+TE_sum = Target_Encoder_tab[['f1_macro', 'std']].agg({'sum', 'mean'})
+Target_Encoder_tab
