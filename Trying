@@ -1,0 +1,7 @@
+def update_tuple(input_tuple, el_del):
+  box = list(input_tuple)
+  if el_del not in box:
+    return tuple(box)
+  else:
+    box.remove(el_del)
+    return tuple(box)
